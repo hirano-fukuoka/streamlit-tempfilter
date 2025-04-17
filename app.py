@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from scipy.signal import butter, filtfilt
+from datetime import datetime
 
 st.set_page_config(page_title="バンドストップフィルタ", layout="wide")
 st.title("📉 温度データ バンドストップフィルタ Webアプリ")
@@ -67,8 +68,14 @@ if uploaded_file is not None:
             df_filtered["Filtered"] = np.nan
             df_filtered.loc[temp_series.dropna().index, "Filtered"] = filtered_temp
 
+            # CSV出力
             csv = df_filtered.to_csv(index=False).encode("utf-8")
-            st.download_button("📥 フィルタ結果をCSVでダウンロード", csv, "filtered_data.csv", "text/csv")
-
+            
+            # ファイル名に日時を付ける
+            timestamp = datetime.now().strftime("%m%d%H%M")
+            filename = f"filtered_data_{timestamp}.csv"
+            
+            st.download_button("📥 フィルタ結果をCSVでダウンロード", csv, filename, "text/csv")
+            
         except Exception as e:
             st.error(f"フィルタ処理中にエラーが発生しました: {e}")
