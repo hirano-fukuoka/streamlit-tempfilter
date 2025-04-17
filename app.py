@@ -6,7 +6,6 @@ from scipy.signal import butter, filtfilt
 st.set_page_config(page_title="バンドストップフィルタ", layout="wide")
 st.title("📉 温度データ バンドストップフィルタ Webアプリ")
 
-# ファイルアップロード
 uploaded_file = st.file_uploader("CSV または Excelファイルをアップロードしてください", type=["csv", "xlsx"])
 
 if uploaded_file is not None:
@@ -14,7 +13,6 @@ if uploaded_file is not None:
         sheet_names = pd.ExcelFile(uploaded_file).sheet_names
         selected_sheet = st.selectbox("シートを選択", sheet_names)
         try:
-            # 3行目がヘッダー（インデックス2）であると指定
             df = pd.read_excel(uploaded_file, sheet_name=selected_sheet, header=2)
         except Exception as e:
             st.error(f"Excelファイルの読み込みに失敗しました: {e}")
@@ -28,7 +26,6 @@ if uploaded_file is not None:
     time_col = st.selectbox("時間列を選択", df.columns)
     temp_col = st.selectbox("温度列を選択", df.columns)
 
-    # プリセット
     preset = st.selectbox("プリセットを選択", ["カスタム設定", "低周波ノイズ除去", "高周波ノイズ除去", "中周波除去"])
 
     if preset == "低周波ノイズ除去":
@@ -46,8 +43,9 @@ if uploaded_file is not None:
 
     if st.button("フィルタを適用する"):
         try:
-            time_data = pd.to_numeric(df[time_col], errors='coerce').dropna().to_numpy()
-            temp_data = pd.to_numeric(df[temp_col], errors='coerce').dropna().to_numpy()
+            time_series = pd.to_numeric(df[time_col], errors='coerce')
+            temp_series = pd.to_numeric(df[temp_col], errors='coerce')
+            temp_data = temp_series.dropna().to_numpy()
 
             if len(temp_data) < 10:
                 st.error("有効なデータが10件未満です。入力データを確認してください。")
@@ -59,20 +57,18 @@ if uploaded_file is not None:
             b, a = butter(order, [low, high], btype='bandstop')
             filtered_temp = filtfilt(b, a, temp_data)
 
-            # グラフ描画
             st.line_chart({
                 "元データ": temp_data,
                 "フィルタ後": filtered_temp
             })
 
-            # ダウンロード
+            # NaNを除いたインデックスに戻して代入
             df_filtered = df.copy()
             df_filtered["Filtered"] = np.nan
-            df_filtered.loc[df_filtered[temp_col].notnull(), "Filtered"] = filtered_temp
+            df_filtered.loc[temp_series.dropna().index, "Filtered"] = filtered_temp
 
             csv = df_filtered.to_csv(index=False).encode("utf-8")
             st.download_button("📥 フィルタ結果をCSVでダウンロード", csv, "filtered_data.csv", "text/csv")
 
         except Exception as e:
             st.error(f"フィルタ処理中にエラーが発生しました: {e}")
-
